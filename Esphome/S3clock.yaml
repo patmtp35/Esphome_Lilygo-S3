@@ -1,0 +1,204 @@
+#########################################################
+#  Display Clock lilygo-S3 lcd
+###############################
+# V1.0
+###########
+#changelog:
+#  V1.0 Test
+#  V2.0 Clean Code
+###################
+substitutions:
+  #############################
+  # comomon substitution #####
+  ############################  
+  name: "s3clock"
+  esphome_name: "TTgoS3-Clock-Esp"
+  # nonm affiché dans l'interface #
+  friendly_name: "Lilygo-S3 T-Display Clock"
+  #######################################
+  external_components_source: github://landonr/lilygo-tdisplays3-esphome
+  ext_components: "tdisplays3"
+  sensor_prefix: ""
+  device_description: "Dsiplay Time And Date over Lilygo S3"
+  time_timezone: "Europe/Paris"
+  projectname: "Pat.TTgo-S3 Clock proof of concept"
+  appversion: 2.0.0
+  log_level: "INFO"
+  baud_ratelog: "0"
+  api_encryption_key: !secret ttgos3key
+  ota_pswd: !secret ota_pswd
+  ap_pwd: !secret ota_pswd
+  adress_ip: !secret ip_ttgos3
+  gateway_ip: !secret ip_gateway
+  dns_ip: !secret ip_dns
+  time_platform: "sntp"
+
+###############################
+### definition de la carte ESP
+###############################  
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  # On boot set the backlight to 60%
+  on_boot:
+    then:
+      - light.turn_on:
+          id: backlight
+          brightness: 60%  
+
+external_components:
+  - source: ${external_components_source}
+    components: ${ext_components}
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  framework:
+    type: arduino
+###################################
+### inclusion de la partie commune 
+###################################
+
+<<: !include .common.yaml
+  
+# Enable logging
+logger: 
+  level: DEBUG
+  # Quieten the warnings about delays
+  logs:
+    tdisplays3.display: ERROR
+    component: ERROR
+
+# Global variable set that could be used in the display, but is not actively in use
+globals:
+  - id: global_text
+    restore_value: no
+    type: std::string
+    initial_value: '"-- Awaiting Data --"'
+     
+api:
+  # Home Assistant service that can set the global variable
+  services:
+    - service: set_text
+      variables:
+        text_display: string
+      then:
+        - globals.set:
+            id: global_text
+            value: !lambda 'return text_display;'    
+
+time:
+  - platform: ${time_platform}
+    id: ha_time
+    timezone: ${time_zone}
+
+color:
+  - id: my_red
+    red: 100%
+    green: 0%
+    blue: 0%
+  - id: my_yellow
+    red: 100%
+    green: 100%
+    blue: 0%
+  - id: my_green
+    red: 0%
+    green: 100%
+    blue: 0%
+  - id: my_blue
+    red: 0%
+    green: 0%
+    blue: 100%
+  - id: my_gray
+    red: 50%
+    green: 50%
+    blue: 50%
+
+
+
+# Set pin for backlight
+output:
+  - platform: ledc
+    pin: GPIO38
+    id: ledc_pmw
+
+# Set backlight controller
+light:
+  - platform: monochromatic
+    output: ledc_pmw
+    name: "Backlight"
+    id: backlight
+    restore_mode: ALWAYS_OFF
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: ${name} IP Address
+      id: host_ip
+      entity_category: diagnostic
+      icon: mdi:router-wireless
+
+# Set fonts
+font:
+  - file: "gfonts://Roboto"
+    id: ipfont
+    size: 15
+  - file: "gfonts://Roboto"
+    id: datefont
+    size: 25
+  - file: "gfonts://Roboto"
+    id: clockfont
+    size: 60
+    
+  - file: "fonts/Helvetica.ttf"
+    id: helvetica_48
+    size: 48
+  - file: "fonts/Helvetica.ttf"
+    id: helvetica_24
+    size: 24
+  - file: "fonts/Helvetica.ttf"
+    id: helvetica_12
+    size: 12
+
+# Background image
+image:
+  - file: "img/sky.jpg"
+    id: background_image
+    type: RGB24
+
+# 320 x 170 pixel display
+display:
+  - platform: tdisplays3
+    id: lcd
+    update_interval: 0.25s
+    rotation: 90
+    pages:
+      - id: page1
+        lambda: |-
+          //Base colours
+          auto White = Color(255, 255, 255);
+          // Write background image
+          it.image(0, 0, id(background_image));
+          // Write clock
+          it.printf(160, 60, id(clockfont), White, TextAlign::CENTER, id(ha_time).now().strftime("%H:%M:%S").c_str());
+          //Write Date
+          it.printf(160, 110, id(datefont), White, TextAlign::TOP_CENTER, id(ha_time).now().strftime("%a %d %b %Y").c_str());
+          //Write IP Address
+          it.printf(320,170, id(ipfont), White, TextAlign::BOTTOM_RIGHT, "%15s", id(host_ip).state.c_str());
+
+# Push Buttons
+# 90 degree screen rotation, so boot (GPIO0) is at the bottom.
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: 14
+      inverted: true
+    name: ${name} Top Button
+  - platform: gpio
+    pin:
+      number: 0
+      inverted: true
+    name: ${name} Bottom Button
+
+    
