@@ -1,0 +1,205 @@
+#########################################################
+#  Display Victron S3
+###############################
+# V1.0
+###########
+#changelog:
+#  V1.0 Test
+#  
+###################
+substitutions:
+  #############################
+  # comomon substitution #####
+  ############################  
+  name: "victrondisplay"
+  esphome_name: "TTgoS3-Victron Display"
+  # nonm affiché dans l'interface #
+  friendly_name: "Lilygo-S3 Display Victron"
+  #######################################
+  external_components_source: github://landonr/lilygo-tdisplays3-esphome
+  ext_components: "tdisplays3"
+  sensor_prefix: ""
+  device_description: "Display Victron Mppt Virtals Meters Lilygo S3"
+  time_timezone: "Europe/Paris"
+  projectname: "Pat.TTgo-S3 Display Victron Mppt"
+  appversion: 1.0.0
+  log_level: "INFO"
+  baud_ratelog: "0"
+  api_encryption_key: !secret ttgos3key
+  ota_pswd: !secret ota_pswd
+  ap_pwd: !secret ota_pswd
+  adress_ip: !secret ip_ttgos3
+  gateway_ip: !secret ip_gateway
+  dns_ip: !secret ip_dns
+  time_platform: "sntp"
+
+###############################
+### definition de la carte ESP
+###############################  
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  comment: ${device_description}
+  project:
+    name: ${projectname}
+    version: ${appversion}
+  # On boot set the backlight to 60%
+  #on_boot:
+  #  then:
+  #    - script.execute: backlight_timeout
+  on_boot:
+    then:
+      - light.turn_on:
+          id: backlight1
+          brightness: 60%
+
+external_components:
+  - source: ${external_components_source}
+    components: ${ext_components}
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  framework:
+    type: arduino
+###################################
+### inclusion de la partie commune 
+###################################
+
+<<: !include .common.yaml
+<<: !include .basedisplay.yaml
+  
+# Enable logging
+logger: 
+  level: DEBUG
+  # Quieten the warnings about delays
+  logs:
+    tdisplays3.display: ERROR
+    component: ERROR
+
+# Global variable set that could be used in the display, but is not actively in use
+globals:
+  - id: global_text
+    restore_value: no
+    type: std::string
+    initial_value: '"-- Awaiting Data --"'
+     
+api:
+  # Home Assistant service that can set the global variable
+  services:
+    - service: set_text
+      variables:
+        text_display: string
+      then:
+        - globals.set:
+            id: global_text
+            value: !lambda 'return text_display;'    
+
+time:
+  - platform: ${time_platform}
+    id: ha_time
+    timezone: ${time_zone}
+    
+# Buttons
+binary_sensor:
+  - platform: gpio
+    name: "Short press button 0"
+    id: short_press_button_0
+    pin:
+      number: GPIO0
+      inverted: True
+      mode:
+        input: True
+        pullup: True
+    on_click: 
+      then:
+        - switch.toggle: backlight
+      min_length: 5ms
+  - platform: gpio
+    name: "Short press button 1"
+    id: short_press_button_1
+    pin:
+      number: GPIO35
+      inverted: True
+      mode:
+        input: True
+    on_click: 
+      then:
+        - switch.toggle: backlight
+      min_length: 5ms
+
+# Backlight
+script:
+  - id: backlight_timeout
+    mode: restart
+    then:
+      - delay: 10min
+      - switch.turn_off: backlight
+
+switch:
+  - platform: gpio
+    pin: GPIO4
+    id: backlight
+    internal: true
+    restore_mode: ALWAYS_ON
+    on_turn_on:
+      - script.execute: backlight_timeout
+      
+# Set pin for backlight
+output:
+  - platform: ledc
+    pin: GPIO38
+    id: ledc_pmw
+
+# Set backlight controller
+light:
+  - platform: monochromatic
+    output: ledc_pmw
+    name: "Backlight"
+    id: backlight1
+    restore_mode: ALWAYS_OFF
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: ${name} IP Address
+      id: host_ip
+      entity_category: diagnostic
+      icon: mdi:router-wireless
+      
+  - platform: homeassistant
+    id: panelvoltage
+    entity_id: sensor.smartsolar1_esp_panel_voltage
+    internal: true      
+    attribute: state
+
+# Background image
+image:
+  - file: "img/sky.jpg"
+    id: background_image
+    type: RGB24
+
+# 320 x 170 pixel display
+display:
+  - platform: tdisplays3
+    id: lcd
+    update_interval: 0.25s
+    rotation: 90
+    pages:
+      - id: page1
+        lambda: |-
+          //Base colours
+          auto White = Color(255, 255, 255);
+          // Write background image
+          it.image(0, 0, id(background_image));
+          // Write clock
+          it.printf(160, 60, id(clockfont), White, TextAlign::CENTER, id(ha_time).now().strftime("%H:%M:%S").c_str());
+          //Write Date
+          it.printf(160, 110, id(datefont), White, TextAlign::TOP_CENTER, id(ha_time).now().strftime("%a %d %b %Y").c_str());
+          //Write Voltage panel
+          it.printf(320,170, id(ipfont), White, TextAlign::BOTTOM_RIGHT, "%.3f", id(panelvoltage).state.c_str());
+
+
+
+    
