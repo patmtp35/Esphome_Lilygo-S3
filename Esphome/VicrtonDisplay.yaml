@@ -1,12 +1,12 @@
 #########################################################
-#  Display Victron S3
+#  Display Victron S3 Simple Page
 ###############################
-# V1.0
-###########
+# V2.0
+###################################
 #changelog:
+#  V 2.0 Simple page values viewer
 #  V1.0 Test
-#  
-###################
+###################################
 substitutions:
   #############################
   # comomon substitution #####
@@ -20,7 +20,6 @@ substitutions:
   ext_components: "tdisplays3"
   sensor_prefix: ""
   device_description: "Display Victron Mppt Virtals Meters Lilygo S3"
-  time_timezone: "Europe/Paris"
   projectname: "Pat.TTgo-S3 Display Victron Mppt"
   appversion: 1.0.0
   log_level: "INFO"
@@ -31,7 +30,9 @@ substitutions:
   adress_ip: !secret ip_ttgos3
   gateway_ip: !secret ip_gateway
   dns_ip: !secret ip_dns
-  time_platform: "sntp"
+  time_platform: "homeassistant"
+  time_timezone: "Europe/Paris"
+  time_id: "ha_time" 
 
 ###############################
 ### definition de la carte ESP
@@ -95,12 +96,9 @@ api:
         - globals.set:
             id: global_text
             value: !lambda 'return text_display;'    
-
-time:
-  - platform: ${time_platform}
-    id: ha_time
-    timezone: ${time_zone}
-    
+            
+##############################################################
+# Interface web gestion luminosiée    
 # Buttons
 binary_sensor:
   - platform: gpio
@@ -159,7 +157,7 @@ light:
     name: "Backlight"
     id: backlight1
     restore_mode: ALWAYS_OFF
-
+##########################################################
 text_sensor:
   - platform: wifi_info
     ip_address:
@@ -169,11 +167,38 @@ text_sensor:
       icon: mdi:router-wireless
       
   - platform: homeassistant
-    id: panelvoltage
-    entity_id: sensor.smartsolar1_esp_panel_voltage
-    internal: true      
-    attribute: state
+    id: chargemode
+    name: "Charge :"
+    entity_id: sensor.smartsolar1_esp_charging_mode
+    internal: true  
+    icon: "mdi:solar-power"
+#########################################################     
+sensor:
+  - platform: homeassistant  
+    id: bat_temp
+    entity_id: sensor.bms24v_temperature
+    internal: true
+  
+  - platform: homeassistant
+    id: batvoltage
+    entity_id: sensor.smartsolar1_esp_battery_voltage
+    internal: true
 
+  - platform: homeassistant
+    id: panelwatts
+    entity_id: sensor.smartsolar1_esp_panel_power
+    internal: true 
+
+  - platform: homeassistant
+    id: panelvolts
+    entity_id: sensor.smartsolar1_esp_panel_voltage
+    internal: true 
+  
+  - platform: homeassistant
+    id: panelamps
+    entity_id: sensor.smartsolar1_esp_panel_current
+    internal: true
+ 
 # Background image
 image:
   - file: "img/sky.jpg"
@@ -185,21 +210,34 @@ display:
   - platform: tdisplays3
     id: lcd
     update_interval: 0.25s
-    rotation: 90
+    rotation: 270
     pages:
       - id: page1
         lambda: |-
           //Base colours
           auto White = Color(255, 255, 255);
           // Write background image
-          it.image(0, 0, id(background_image));
+          //it.image(0, 0, id(background_image));
           // Write clock
-          it.printf(160, 60, id(clockfont), White, TextAlign::CENTER, id(ha_time).now().strftime("%H:%M:%S").c_str());
-          //Write Date
-          it.printf(160, 110, id(datefont), White, TextAlign::TOP_CENTER, id(ha_time).now().strftime("%a %d %b %Y").c_str());
-          //Write Voltage panel
-          it.printf(320,170, id(ipfont), White, TextAlign::BOTTOM_RIGHT, "%.3f", id(panelvoltage).state.c_str());
-
-
-
-    
+          it.printf(160, 60, id(big_boldfont), White, TextAlign::CENTER, id(ha_time).now().strftime("%H:%M:%S").c_str());
+          // cadre
+          it.rectangle(0, 0, it.get_width(), it.get_height(), id(my_white));
+          it.rectangle(0, 32, it.get_width(), it.get_height(), id(my_white)); // header bar
+          // lines delim
+          it.line(0, 90, 320, 90, White);
+          it.line(0, 128, 320, 128, White);
+          // upbar titre
+          it.printf(160, 18, id(up_barfont), White, TextAlign::CENTER, "MPPT 1");
+          // temps bat
+          it.printf(50, 18, id(small_boldfont), my_green, TextAlign::CENTER, "%.1f °c", id(bat_temp).state);
+          //Write bat voltage
+          it.printf(280, 18, id(small_boldfont), my_green, TextAlign::CENTER, "%.1f v", id(batvoltage).state);
+          //Write Solar Panel Watts
+          it.printf(60, 145, id(med_boldfont), White, TextAlign::CENTER, "%.0fw", id(panelwatts).state);
+          //Write Solar Panel Volts
+          it.printf(160, 145, id(med_boldfont), White, TextAlign::CENTER, "%.1fv", id(panelvolts).state);
+          //Write Solar Panel Amps
+          it.printf(265, 145, id(med_boldfont), White, TextAlign::CENTER, "%.2fa", id(panelamps).state);
+          //Write Solar charging mode
+          it.printf(160, 105, id(med_boldfont), my_green, TextAlign::CENTER, "Charge: %s", id(chargemode).state.c_str());
+          

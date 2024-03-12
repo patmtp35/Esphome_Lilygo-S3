@@ -1,0 +1,69 @@
+###############################################################################
+## definition des couleurs et des fontes pour les display
+###############################################################################
+# changelogs:
+# V1.0 colors + fonts
+####################
+##lilygo S3
+####################
+
+color:
+  - id: my_red
+    red: 100%
+    green: 0%
+    blue: 0%
+  - id: my_yellow
+    red: 100%
+    green: 100%
+    blue: 0%
+  - id: my_green
+    red: 0%
+    green: 100%
+    blue: 0%
+  - id: my_blue
+    red: 0%
+    green: 0%
+    blue: 100%
+  - id: my_gray
+    red: 50%
+    green: 50%
+    blue: 50%
+  - id: my_white
+    red: 100%
+    green: 100%
+    blue: 100%
+    
+    
+    
+    
+# Set fonts
+font:
+  - file: "fonts/boldfont.ttf"
+    id: small_boldfont
+    size: 25
+  - file: "fonts/boldfont.ttf"
+    id: med_boldfont
+    size: 40
+  - file: "fonts/boldfont.ttf"
+    id: big_boldfont
+    size: 60
+    
+  - file: "gfonts://Roboto"
+    id: ipfont
+    size: 15
+  - file: "gfonts://Roboto"
+    id: up_barfont
+    size: 25
+  - file: "gfonts://Roboto"
+    id: big_clockfont
+    size: 60
+    
+  - file: "fonts/Helvetica.ttf"
+    id: helvetica_48
+    size: 48
+  - file: "fonts/Helvetica.ttf"
+    id: helvetica_24
+    size: 24
+  - file: "fonts/Helvetica.ttf"
+    id: helvetica_12
+    size: 12    
