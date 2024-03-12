@@ -1,7 +1,7 @@
 ############################################################
 # Esphome + Display lilygo S3 
 ################################
-# Dsiplay Clock fork =>
+# Display Clock fork =>
 # https://www.thoughtasylum.com/2023/10/29/home-assistant-enhanced-desk-clock/
 # https://esphome.io/components/display/st7789v.html
 ######################################
