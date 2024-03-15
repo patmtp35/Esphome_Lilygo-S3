@@ -1,9 +1,13 @@
 #########################################################
 #  Display Victron S3 Simple Page
-###############################
-# V2.0
+#  LILYGO T-Embed 170X320
+#  Button 1 show graph
+#  backlight switch via homeassistant or Web
+##############################################
+# V2.5
 ###################################
 #changelog:
+#  V 2.5 page 2 graphs  
 #  V 2.0 Simple page values viewer
 #  V1.0 Test
 ###################################
@@ -19,9 +23,9 @@ substitutions:
   external_components_source: github://landonr/lilygo-tdisplays3-esphome
   ext_components: "tdisplays3"
   sensor_prefix: ""
-  device_description: "Display Victron Mppt Virtals Meters Lilygo S3"
+  device_description: "Display Victron Mppt Virtuals Meters Lilygo S3"
   projectname: "Pat.TTgo-S3 Display Victron Mppt"
-  appversion: 1.0.0
+  appversion: 2.5.0
   log_level: "INFO"
   baud_ratelog: "0"
   api_encryption_key: !secret ttgos3key
@@ -33,7 +37,8 @@ substitutions:
   time_platform: "homeassistant"
   time_timezone: "Europe/Paris"
   time_id: "ha_time" 
-
+  
+   
 ###############################
 ### definition de la carte ESP
 ###############################  
@@ -45,15 +50,12 @@ esphome:
   project:
     name: ${projectname}
     version: ${appversion}
-  # On boot set the backlight to 60%
-  #on_boot:
-  #  then:
-  #    - script.execute: backlight_timeout
+  # On boot set the backlight to 50%
   on_boot:
     then:
-      - light.turn_on:
+     - light.turn_on:
           id: backlight1
-          brightness: 60%
+          brightness: 57%
 
 external_components:
   - source: ${external_components_source}
@@ -78,55 +80,32 @@ logger:
   logs:
     tdisplays3.display: ERROR
     component: ERROR
+    graph: ERROR
 
-# Global variable set that could be used in the display, but is not actively in use
-globals:
-  - id: global_text
-    restore_value: no
-    type: std::string
-    initial_value: '"-- Awaiting Data --"'
-     
-api:
-  # Home Assistant service that can set the global variable
-  services:
-    - service: set_text
-      variables:
-        text_display: string
-      then:
-        - globals.set:
-            id: global_text
-            value: !lambda 'return text_display;'    
-            
 ##############################################################
-# Interface web gestion luminosiée    
+# Interface web gestion luminosiée   + chgmt de pages 
 # Buttons
 binary_sensor:
+  - platform: status
+    name: "status:"
+    id: system_status
+
   - platform: gpio
-    name: "Short press button 0"
-    id: short_press_button_0
     pin:
       number: GPIO0
-      inverted: True
-      mode:
-        input: True
-        pullup: True
-    on_click: 
-      then:
-        - switch.toggle: backlight
-      min_length: 5ms
+      inverted: true
+    name: "Button 1"
   - platform: gpio
-    name: "Short press button 1"
-    id: short_press_button_1
     pin:
-      number: GPIO35
-      inverted: True
-      mode:
-        input: True
-    on_click: 
+      number: GPIO14
+      inverted: true
+    name: "Button 2"
+    on_press:
       then:
-        - switch.toggle: backlight
-      min_length: 5ms
-
+        - display.page.show: page2
+        - delay: 20s
+        - display.page.show: page1 
+       
 # Backlight
 script:
   - id: backlight_timeout
@@ -143,7 +122,8 @@ switch:
     restore_mode: ALWAYS_ON
     on_turn_on:
       - script.execute: backlight_timeout
-      
+
+# switch interface web      
 # Set pin for backlight
 output:
   - platform: ledc
@@ -157,11 +137,12 @@ light:
     name: "Backlight"
     id: backlight1
     restore_mode: ALWAYS_OFF
+
 ##########################################################
 text_sensor:
   - platform: wifi_info
     ip_address:
-      name: ${name} IP Address
+      name: "IP Address"
       id: host_ip
       entity_category: diagnostic
       icon: mdi:router-wireless
@@ -198,20 +179,66 @@ sensor:
     id: panelamps
     entity_id: sensor.smartsolar1_esp_panel_current
     internal: true
- 
+######################################################
+## Graph page 2
+######################################################
+graph:
+  - id: watts_mppts
+    duration: 8h
+    min_value: 0
+    max_value: 420
+    width: 318
+    height: 85
+    border: true
+    #y_grid: 1.0
+    #x_grid: 5min
+    traces:
+      - sensor: panelwatts 
+        color: my_yellow    
+        continuous: true
+        line_thickness: 4
+
+  - id: volt_bats 
+    duration: 8h
+    min_value: 0
+    max_value: 55
+    width: 318
+    height: 83
+    border: true
+    #y_grid: 1.0
+    #x_grid: 5min
+    traces:
+      - sensor: batvoltage
+        color: my_green
+        continuous: true
+        line_thickness: 4
+      - sensor: panelvolts
+        color: my_red       
+        continuous: true
+        line_thickness: 4
+        
 # Background image
 image:
   - file: "img/sky.jpg"
     id: background_image
     type: RGB24
 
+# This is the 'internal' SPI bus for the T-Display's display
+spi:
+  clk_pin: GPIO18
+  mosi_pin: GPIO19
+
 # 320 x 170 pixel display
 display:
   - platform: tdisplays3
-    id: lcd
+    id: ttgo_tdisplay
     update_interval: 0.25s
-    rotation: 270
+    rotation: 90 # 270
     pages:
+      ##############################################################################
+      #                           PAGE 1
+      #               affichage Heure + info Victron Smart Solar 1
+      ###############################################################################
       - id: page1
         lambda: |-
           //Base colours
@@ -224,20 +251,37 @@ display:
           it.rectangle(0, 0, it.get_width(), it.get_height(), id(my_white));
           it.rectangle(0, 32, it.get_width(), it.get_height(), id(my_white)); // header bar
           // lines delim
-          it.line(0, 90, 320, 90, White);
+          it.line(0, 89, 320, 90, White);
           it.line(0, 128, 320, 128, White);
           // upbar titre
-          it.printf(160, 18, id(up_barfont), White, TextAlign::CENTER, "MPPT 1");
+          it.printf(160, 18, id(up_barfont), my_yellow, TextAlign::CENTER, "MPPT 1");
           // temps bat
           it.printf(50, 18, id(small_boldfont), my_green, TextAlign::CENTER, "%.1f °c", id(bat_temp).state);
           //Write bat voltage
           it.printf(280, 18, id(small_boldfont), my_green, TextAlign::CENTER, "%.1f v", id(batvoltage).state);
           //Write Solar Panel Watts
-          it.printf(60, 145, id(med_boldfont), White, TextAlign::CENTER, "%.0fw", id(panelwatts).state);
+          it.printf(58, 145, id(med_boldfont), White, TextAlign::CENTER, "%.0fw", id(panelwatts).state);
           //Write Solar Panel Volts
-          it.printf(160, 145, id(med_boldfont), White, TextAlign::CENTER, "%.1fv", id(panelvolts).state);
+          it.printf(158, 145, id(med_boldfont), White, TextAlign::CENTER, "%.1fv", id(panelvolts).state);
           //Write Solar Panel Amps
-          it.printf(265, 145, id(med_boldfont), White, TextAlign::CENTER, "%.2fa", id(panelamps).state);
+          it.printf(263, 145, id(med_boldfont), White, TextAlign::CENTER, "%.2fa", id(panelamps).state);
           //Write Solar charging mode
           it.printf(160, 105, id(med_boldfont), my_green, TextAlign::CENTER, "Charge: %s", id(chargemode).state.c_str());
-          
+      #####################################################################################
+      #                             PAGE 2
+      #                  Affichage Graph watts SmartSolar + batts sur 8h 
+      ######################################################################################    
+      - id: page2
+        lambda: |-
+          // Write background image
+          //it.image(0, 0, id(background_image));
+          // Write graph
+          it.print(5, 10, id(verysm_boldfont), my_white, "450");
+          it.print(40, 10, id(verysm_boldfont), my_yellow, " Mppt1 W");
+          it.print(5, 65, id(verysm_boldfont), my_white, "0");
+          it.graph(0, 0, id(watts_mppts));
+          it.print(5, 90, id(verysm_boldfont), my_white, "55 ");
+          it.print(35, 90, id(verysm_boldfont), my_green, "Bat V"); // 1 car = 10px
+          it.print(75, 90, id(verysm_boldfont), my_red, "- Mppt1 V");
+          it.print(5, 145, id(verysm_boldfont), my_white, "0");
+          it.graph(0, 86, id(volt_bats));

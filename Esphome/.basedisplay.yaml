@@ -39,6 +39,9 @@ color:
 # Set fonts
 font:
   - file: "fonts/boldfont.ttf"
+    id: verysm_boldfont
+    size: 15
+  - file: "fonts/boldfont.ttf"
     id: small_boldfont
     size: 25
   - file: "fonts/boldfont.ttf"
