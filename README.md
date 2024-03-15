@@ -11,6 +11,4 @@
 Platform : lilygo-S3 lcd Dsiplay
 
 Supported Device: All SmartSolart with VE-Direct Port 
-
-
-Work in progress = > Display Victron metrers Values
+Display Victron metrers Values + graph panels Watts + Bat Volts + Panel Volts
