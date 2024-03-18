@@ -14,6 +14,7 @@ Supported Device: All SmartSolart with VE-Direct Port
 Display Victron metrers Values + graph panels Watts + Bat Volts + Panel Volts
 
 Page 1:
-https://github.com/patmtp35/Esphome_Lilygo-S3_Victron/blob/main/img/page1.jpg
+![image](https://github.com/patmtp35/Esphome_Lilygo-S3_Victron/assets/6410695/6b762fb9-d029-4d4c-9c11-ffd49aa61eac)
 
 Page2:
+
