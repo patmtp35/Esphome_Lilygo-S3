@@ -1,0 +1,287 @@
+#########################################################
+#  Display Victron S3 Simple Page
+#  LILYGO T-Embed 170X320
+#  Button 1 show graph
+#  backlight switch via homeassistant or Web
+##############################################
+# V2.5
+###################################
+#changelog:
+#  V 2.5 page 2 graphs  
+#  V 2.0 Simple page values viewer
+#  V1.0 Test
+###################################
+substitutions:
+  #############################
+  # comomon substitution #####
+  ############################  
+  name: "victrondisplay"
+  esphome_name: "TTgoS3-Victron Display"
+  # nonm affiché dans l'interface #
+  friendly_name: "Lilygo-S3 Display Victron"
+  #######################################
+  external_components_source: github://landonr/lilygo-tdisplays3-esphome
+  ext_components: "tdisplays3"
+  sensor_prefix: ""
+  device_description: "Display Victron Mppt Virtuals Meters Lilygo S3"
+  projectname: "Pat.TTgo-S3 Display Victron Mppt"
+  appversion: 2.5.0
+  log_level: "INFO"
+  baud_ratelog: "0"
+  api_encryption_key: !secret ttgos3key
+  ota_pswd: !secret ota_pswd
+  ap_pwd: !secret ota_pswd
+  adress_ip: !secret ip_ttgos3
+  gateway_ip: !secret ip_gateway
+  dns_ip: !secret ip_dns
+  time_platform: "homeassistant"
+  time_timezone: "Europe/Paris"
+  time_id: "ha_time" 
+  
+   
+###############################
+### definition de la carte ESP
+###############################  
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  comment: ${device_description}
+  project:
+    name: ${projectname}
+    version: ${appversion}
+  # On boot set the backlight to 50%
+  on_boot:
+    then:
+     - light.turn_on:
+          id: backlight1
+          brightness: 57%
+
+external_components:
+  - source: ${external_components_source}
+    components: ${ext_components}
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  framework:
+    type: arduino
+###################################
+### inclusion de la partie commune 
+###################################
+
+<<: !include .common.yaml
+<<: !include .basedisplay.yaml
+  
+# Enable logging
+logger: 
+  level: DEBUG
+  # Quieten the warnings about delays
+  logs:
+    tdisplays3.display: ERROR
+    component: ERROR
+    graph: ERROR
+
+##############################################################
+# Interface web gestion luminosiée   + chgmt de pages 
+# Buttons
+binary_sensor:
+  - platform: status
+    name: "status:"
+    id: system_status
+
+  - platform: gpio
+    pin:
+      number: GPIO0
+      inverted: true
+    name: "Button 1"
+  - platform: gpio
+    pin:
+      number: GPIO14
+      inverted: true
+    name: "Button 2"
+    on_press:
+      then:
+        - display.page.show: page2
+        - delay: 20s
+        - display.page.show: page1 
+       
+# Backlight
+script:
+  - id: backlight_timeout
+    mode: restart
+    then:
+      - delay: 10min
+      - switch.turn_off: backlight
+
+switch:
+  - platform: gpio
+    pin: GPIO4
+    id: backlight
+    internal: true
+    restore_mode: ALWAYS_ON
+    on_turn_on:
+      - script.execute: backlight_timeout
+
+# switch interface web      
+# Set pin for backlight
+output:
+  - platform: ledc
+    pin: GPIO38
+    id: ledc_pmw
+
+# Set backlight controller
+light:
+  - platform: monochromatic
+    output: ledc_pmw
+    name: "Backlight"
+    id: backlight1
+    restore_mode: ALWAYS_OFF
+
+##########################################################
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "IP Address"
+      id: host_ip
+      entity_category: diagnostic
+      icon: mdi:router-wireless
+      
+  - platform: homeassistant
+    id: chargemode
+    name: "Charge :"
+    entity_id: sensor.smartsolar1_esp_charging_mode
+    internal: true  
+    icon: "mdi:solar-power"
+#########################################################     
+sensor:
+  - platform: homeassistant  
+    id: bat_temp
+    entity_id: sensor.bms24v_temperature
+    internal: true
+  
+  - platform: homeassistant
+    id: batvoltage
+    entity_id: sensor.smartsolar1_esp_battery_voltage
+    internal: true
+
+  - platform: homeassistant
+    id: panelwatts
+    entity_id: sensor.smartsolar1_esp_panel_power
+    internal: true 
+
+  - platform: homeassistant
+    id: panelvolts
+    entity_id: sensor.smartsolar1_esp_panel_voltage
+    internal: true 
+  
+  - platform: homeassistant
+    id: panelamps
+    entity_id: sensor.smartsolar1_esp_panel_current
+    internal: true
+######################################################
+## Graph page 2
+######################################################
+graph:
+  - id: watts_mppts
+    duration: 8h
+    min_value: 0
+    max_value: 420
+    width: 318
+    height: 85
+    border: true
+    #y_grid: 1.0
+    #x_grid: 5min
+    traces:
+      - sensor: panelwatts 
+        color: my_yellow    
+        continuous: true
+        line_thickness: 4
+
+  - id: volt_bats 
+    duration: 8h
+    min_value: 0
+    max_value: 55
+    width: 318
+    height: 83
+    border: true
+    #y_grid: 1.0
+    #x_grid: 5min
+    traces:
+      - sensor: batvoltage
+        color: my_green
+        continuous: true
+        line_thickness: 4
+      - sensor: panelvolts
+        color: my_red       
+        continuous: true
+        line_thickness: 4
+        
+# Background image
+image:
+  - file: "img/sky.jpg"
+    id: background_image
+    type: RGB24
+
+# This is the 'internal' SPI bus for the T-Display's display
+spi:
+  clk_pin: GPIO18
+  mosi_pin: GPIO19
+
+# 320 x 170 pixel display
+display:
+  - platform: tdisplays3
+    id: ttgo_tdisplay
+    update_interval: 0.25s
+    rotation: 90 # 270
+    pages:
+      ##############################################################################
+      #                           PAGE 1
+      #               affichage Heure + info Victron Smart Solar 1
+      ###############################################################################
+      - id: page1
+        lambda: |-
+          //Base colours
+          auto White = Color(255, 255, 255);
+          // Write background image
+          //it.image(0, 0, id(background_image));
+          // Write clock
+          it.printf(160, 60, id(big_boldfont), White, TextAlign::CENTER, id(ha_time).now().strftime("%H:%M:%S").c_str());
+          // cadre
+          it.rectangle(0, 0, it.get_width(), it.get_height(), id(my_white));
+          it.rectangle(0, 32, it.get_width(), it.get_height(), id(my_white)); // header bar
+          // lines delim
+          it.line(0, 89, 320, 90, White);
+          it.line(0, 128, 320, 128, White);
+          // upbar titre
+          it.printf(160, 18, id(up_barfont), my_yellow, TextAlign::CENTER, "MPPT 1");
+          // temps bat
+          it.printf(50, 18, id(small_boldfont), my_green, TextAlign::CENTER, "%.1f °c", id(bat_temp).state);
+          //Write bat voltage
+          it.printf(280, 18, id(small_boldfont), my_green, TextAlign::CENTER, "%.1f v", id(batvoltage).state);
+          //Write Solar Panel Watts
+          it.printf(58, 145, id(med_boldfont), White, TextAlign::CENTER, "%.0fw", id(panelwatts).state);
+          //Write Solar Panel Volts
+          it.printf(158, 145, id(med_boldfont), White, TextAlign::CENTER, "%.1fv", id(panelvolts).state);
+          //Write Solar Panel Amps
+          it.printf(263, 145, id(med_boldfont), White, TextAlign::CENTER, "%.2fa", id(panelamps).state);
+          //Write Solar charging mode
+          it.printf(160, 105, id(med_boldfont), my_green, TextAlign::CENTER, "Charge: %s", id(chargemode).state.c_str());
+      #####################################################################################
+      #                             PAGE 2
+      #                  Affichage Graph watts SmartSolar + batts sur 8h 
+      ######################################################################################    
+      - id: page2
+        lambda: |-
+          // Write background image
+          //it.image(0, 0, id(background_image));
+          // Write graph
+          it.print(5, 10, id(verysm_boldfont), my_white, "450");
+          it.print(40, 10, id(verysm_boldfont), my_yellow, " Mppt1 W");
+          it.print(5, 65, id(verysm_boldfont), my_white, "0");
+          it.graph(0, 0, id(watts_mppts));
+          it.print(5, 90, id(verysm_boldfont), my_white, "55 ");
+          it.print(35, 90, id(verysm_boldfont), my_green, "Bat V"); // 1 car = 10px
+          it.print(75, 90, id(verysm_boldfont), my_red, "- Mppt1 V");
+          it.print(5, 145, id(verysm_boldfont), my_white, "0");
+          it.graph(0, 86, id(volt_bats));

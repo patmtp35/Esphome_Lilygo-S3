@@ -1,7 +1,7 @@
 ############################################################
 # Esphome + Display lilygo S3 
 ################################
-# Dsiplay Clock fork =>
+# Display Clock fork =>
 # https://www.thoughtasylum.com/2023/10/29/home-assistant-enhanced-desk-clock/
 # https://esphome.io/components/display/st7789v.html
 ######################################
@@ -11,6 +11,4 @@
 Platform : lilygo-S3 lcd Dsiplay
 
 Supported Device: All SmartSolart with VE-Direct Port 
-
-
-Work in progress = > Display Victron metrers Values
+Display Victron metrers Values + graph panels Watts + Bat Volts + Panel Volts
