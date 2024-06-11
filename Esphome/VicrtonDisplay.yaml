@@ -266,7 +266,7 @@ display:
           //Write Solar Panel Amps
           it.printf(263, 145, id(med_boldfont), White, TextAlign::CENTER, "%.2fa", id(panelamps).state);
           //Write Solar charging mode
-          it.printf(160, 105, id(med_boldfont), my_green, TextAlign::CENTER, "Charge: %s", id(chargemode).state.c_str());
+          it.printf(160, 105, id(med_boldfont), my_green, TextAlign::CENTER, "Charge: %s", id(chargemode).state.substr(0,5).c_str());
       #####################################################################################
       #                             PAGE 2
       #                  Affichage Graph watts SmartSolar + batts sur 8h 
