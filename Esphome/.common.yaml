@@ -86,7 +86,7 @@ captive_portal:
 ## COMPONENT OTA
 ## ---------------------------------------------------
 ota:
-- platform; esphome
+- platform: esphome
   password: ${ota_pswd}
   
   safe_mode: false
